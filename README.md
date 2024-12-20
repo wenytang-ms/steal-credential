@@ -1,71 +1,49 @@
-# steal-credentials README
+# Steal Credentials VSCode Extension
 
-This is the README for your extension "steal-credentials". After writing up a brief description, we recommend including the following sections.
+The [VSCode API](https://code.visualstudio.com/api/references/vscode-api) provides extensions with functionality to store secrets via [SecretStorage.store(key, value)](https://code.visualstudio.com/api/references/vscode-api#SecretStorage).
 
-## Features
+It stores the secrets namespaced to the extension requesting the operation.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+Still, nothing prevents an evil extension to use the underlying mechanisms to steal credentials for all extensions.
 
-For example if there is an image subfolder under your extension project workspace:
+```mermaid
+flowchart
+	subgraph Code
+	VSCODE["VSCode"]
+	VSCODEAPI["VSCode API SecretStorage"]
+	EXTENSION["VSCode Extension"]
+	style EXTENSION fill:#337733,stroke:#333,stroke-width:4px
+    ELECTRON["Electron safeStorage"]
+    CHROMIUM["Chromium OSCrypt"]
+    LIBSECRET["libsecret"]
+    SQLITE["sqlite3"]
+    DB["globalStorage/state.vscdb"]
+	EVIL_EXTENSION["Evil Extension"]
+	style EVIL_EXTENSION fill:#880000,stroke:#333,stroke-width:4px
+    end
 
-\!\[feature X\]\(images/feature-x.png\)
+	KEYRING["keyring"]
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+	VSCODE --> EXTENSION
+	EXTENSION --> |"store(key, value)"| VSCODEAPI
 
-## Requirements
+	VSCODEAPI --> |"encryptString(key, value)"| ELECTRON
+	ELECTRON --> CHROMIUM
+	CHROMIUM --> LIBSECRET
+	LIBSECRET --> KEYRING
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+	VSCODEAPI --> |"store(extension, encryptedString)"| SQLITE
+	SQLITE --> DB
 
-## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+	EVIL_EXTENSION --> LIBSECRET
+	EVIL_EXTENSION --> SQLITE
+```
 
-For example:
+## Threat Model
 
-This extension contributes the following settings:
+The overall attack flow is shown in the diagram below:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+![malicious-vscode-extension-steal-credentials](./img/malicious-vscode-ext-steal-creds.png)
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+The raw file for the [attack flow builder](https://center-for-threat-informed-defense.github.io/attack-flow/ui/) is located alongside the diagram in the `img` directory.
